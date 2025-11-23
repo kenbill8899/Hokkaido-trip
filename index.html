@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hokkaido Winter Trip</title>
+    
+    <!-- 載入 React 與 Babel -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
+                    },
+                    colors: {
+                        morandi: {
+                            bg: "#F7F5F2",       // 更溫暖的米灰背景
+                            card: "#FFFFFF",
+                            textMain: "#4A4A4A", // 柔和深灰
+                            textSub: "#8C8C8C",  // 中灰
+                            accent: "#8FA3A8",   // 灰藍 (主色)
+                            accentLight: "#E3E8EA",
+                            highlight: "#C7B8A3",// 奶茶色 (強調)
+                            highlightLight: "#F2EFE9",
+                            green: "#9EB5A3",    // 灰綠 (景點)
+                            rose: "#D1B8B8",     // 灰粉 (美食)
+                            roseLight: "#F5EBEB"
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+                        'float': '0 10px 30px -5px rgba(0, 0, 0, 0.08)',
+                        'inner-light': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.02)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F7F5F2; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 24px); }
+        .pt-safe { padding-top: env(safe-area-inset-top, 20px); }
+        
+        /* 自定義動畫 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-card { animation: fadeIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        
+        /* 玻璃擬態背景 */
+        .glass {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- 圖示 (Lucide) ---
+        const Icons = {
+            Plane: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M2 12h20"/><path d="M13 2l9 10-9 10"/><path d="M5 2l9 10-9 10"/></svg>,
+            Car: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>,
+            MapPin: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>,
+            Calendar: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
+            Utensils: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>,
+            ChevronDown: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m6 9 6 6 6-6"/></svg>,
+            Copy: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>,
+            Clock: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            Navigation: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>,
+            Map: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/></svg>,
+            Info: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
+            Parking: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/></svg>
+        };
+
+        // --- 資料數據 ---
+        const FLIGHT_DATA = [
+            { type: "去程", date: "2026/01/18 (日)", route: "TPE 台北 ➝ CTS 新千歲", flight: "酷航 TR 892", time: "11:10 - 16:00", note: "單 30kg + 第一排" },
+            { type: "回程", date: "2026/01/29 (四)", route: "CTS 新千歲 ➝ TPE 台北", flight: "酷航 TR 893", time: "17:30 - 21:20", note: "各 20kg + 第一排" }
+        ];
+
+        const CAR_RENTAL_DATA = {
+            company: "World Net Rent-A-Car",
+            model: "Subaru Forester Sport (4WD)",
+            period: "01/18 - 01/29 (12天)",
+            pickup: "新千歲空港營業所 (16:00後)",
+            returnLocation: "新千歲空港營業所",
+            price: "¥124,560",
+            contact: "0123-40-8887",
+            orderId: "140359",
+            insurance: "含全險 & 免責 NOC保",
+            notes: ["還車請加滿油", "含雪胎", "無ETC卡", "需保留加油單據"]
+        };
+
+        const RESTAURANT_DATA = [
+            { area: "札幌", type: "迴轉壽司", name: "根室花丸 JR Tower Stellar Place", note: "熱門排隊店", mapCode: "9 522 833*11" },
+            { area: "札幌", type: "壽司", name: "あら政", note: "", mapCode: "9 492 686*66" },
+            { area: "札幌", type: "壽司", name: "根室花丸 手稻前田店", note: "分店人較少", mapCode: "9 687 433*55" },
+            { area: "札幌", type: "拉麵", name: "信玄拉麵", note: "只點味噌、網紅店", mapCode: "9 462 678*64" },
+            { area: "札幌", type: "拉麵", name: "麵屋雪風 薄野本店", note: "18:00–02:30 (宵夜)", mapCode: "9 492 506*58" },
+            { area: "札幌", type: "拉麵", name: "札幌黑拉麵", note: "22:00-06:00", mapCode: "" },
+            { area: "札幌", type: "拉麵", name: "弟子屈拉麵 橫丁店", note: "11:00–15:30 / 16:30–01:00", mapCode: "9 492 476*76" },
+            { area: "札幌", type: "拉麵", name: "札幌拉麵 悠", note: "11:00–15:00 / 17:00–23:00", mapCode: "9 492 686*55" },
+            { area: "札幌", type: "拉麵", name: "拉麵寶龍 總本店", note: "週一休 / 17:00–22:00", mapCode: "9 492 416*82" },
+            { area: "札幌", type: "湯咖哩", name: "Picante Soup Curry", note: "俞俞指定 (週四休)", mapCode: "9 552 642*55" },
+            { area: "小樽", type: "拉麵", name: "拉麵山岡家 朝里店", note: "", mapCode: "493 543 856*14" },
+            { area: "小樽", type: "壽司", name: "千春鮨 運河店", note: "", mapCode: "493 690 493*74" },
+            { area: "小樽", type: "拉麵", name: "麵處 龍仁", note: "", mapCode: "" },
+            { area: "小樽", type: "拉麵", name: "Ramen Mikan", note: "", mapCode: "493 661 596*63" },
+            { area: "洞爺湖", type: "烤牛肉飯", name: "炭火ダイニングアペコロ", note: "", mapCode: "321 519 458*22" },
+            { area: "旭川", type: "羊肉燒烤", name: "らむ舎 (Ramusha)", note: "人氣生羊肉成吉思汗", mapCode: "79 468 256*88" },
+            { area: "旭川", type: "羊肉燒烤", name: "成吉思汗大黑屋 五丁目店", note: "旭川必吃名店", mapCode: "79 343 888*33" },
+            { area: "旭川", type: "洋食", name: "自由軒 (Jiyuken)", note: "老牌洋食店/豬排飯", mapCode: "79 343 382*55" },
+            { area: "旭川", type: "拉麵", name: "ラーメンてんてん", note: "", mapCode: "79 469 841*55" },
+        ];
+
+        const ITINERARY_DATA = [
+            {
+                day: 1, date: "01/18", fullDate: "2026/01/18 (日)", location: "札幌", hotel: "相鐵FRESA INN 札幌薄野",
+                parking: [
+                    { name: "Times すすきの4・1 (立體)", price: "¥1,500/晚", mapCode: "9 493 334*25", note: "不可預約，限高2.1m" },
+                    { name: "トラストパーク (露天)", price: "¥1,760/24H", mapCode: "9 493 425*60", note: "飯店斜對面，無車高限制" }
+                ],
+                activities: [
+                    { time: "11:10", title: "TPE 起飛", icon: "Plane" },
+                    { time: "16:00", title: "抵達新千歲機場", icon: "Plane" },
+                    { time: "17:00", title: "租車取車 (World Net)", icon: "Car", mapCode: "113 774 573*00", note: "機場接駁車約10分鐘" },
+                    { time: "晚間", title: "飯店 Check-in", icon: "MapPin", mapCode: "9 492 477*22", note: "無附設停車場，需停周邊" },
+                    { time: "晚餐", title: "薄野周邊晚餐", icon: "Utensils" }
+                ]
+            },
+            {
+                day: 2, date: "01/19", fullDate: "2026/01/19 (一)", location: "札幌", hotel: "相鐵FRESA INN 札幌薄野",
+                parking: [
+                    { name: "Times すすきの4・1", price: "¥1,500/晚", mapCode: "9 493 334*25", note: "不可預約" },
+                    { name: "トラストパーク", price: "¥1,760/24H", mapCode: "9 493 425*60", note: "飯店斜對面" }
+                ],
+                activities: [
+                    { time: "全日", title: "三井 OUTLET PARK", icon: "Navigation", mapCode: "9 207 810*20", note: "營業時間 10:00-20:00" }
+                ]
+            },
+            {
+                day: 3, date: "01/20", fullDate: "2026/01/20 (二)", location: "札幌", hotel: "相鐵FRESA INN 札幌薄野",
+                parking: [
+                    { name: "Times すすきの4・1", price: "¥1,500/晚", mapCode: "9 493 334*25", note: "不可預約" },
+                    { name: "トラストパーク", price: "¥1,760/24H", mapCode: "9 493 425*60", note: "飯店斜對面" }
+                ],
+                activities: [
+                    { time: "全日", title: "拍婚紗行程", icon: "MapPin", note: "祝拍攝順利！" }
+                ]
+            },
+            {
+                day: 4, date: "01/21", fullDate: "2026/01/21 (三)", location: "旭川", hotel: "星野 OMO7 旭川",
+                parking: [
+                    { name: "特約停車場 (Times等)", price: "¥1,000/24H", mapCode: "79 342 708*60", note: "先到先停，櫃台繳費" }
+                ],
+                activities: [
+                    { time: "上午", title: "開車前往旭川", icon: "Car", note: "約2小時車程" },
+                    { time: "下午", title: "旭山動物園", icon: "MapPin", mapCode: "79 358 812*26", note: "企鵝散步、北極熊" },
+                    { time: "晚間", title: "OMO7 旭川 Check-in", icon: "MapPin", mapCode: "79 342 708*60" }
+                ]
+            },
+            {
+                day: 5, date: "01/22", fullDate: "2026/01/22 (四)", location: "勇払郡", hotel: "星野度假村 Tomamu",
+                parking: [
+                    { name: "度假村專用停車場", price: "免費", mapCode: "608 511 304*40", note: "住客免費使用" }
+                ],
+                activities: [
+                    { time: "上午", title: "前往美瑛 (途中停留)", icon: "Car", note: "開車約40分" },
+                    { time: "中途", title: "聖誕樹之木", icon: "MapPin", mapCode: "349 788 146", note: "雪原中的網紅樹" },
+                    { time: "下午", title: "前往星野度假村", icon: "Car", note: "前往 Tomamu" },
+                    { time: "全日", title: "星野度假村 Tomamu", icon: "MapPin", mapCode: "608 511 304*40", note: "享受滑雪、愛絲冰城" }
+                ]
+            },
+            {
+                day: 6, date: "01/23", fullDate: "2026/01/23 (五)", location: "勇払郡", hotel: "星野度假村 Tomamu",
+                activities: [
+                    { time: "全日", title: "度假村設施 / 雲海平台", icon: "MapPin" }
+                ]
+            },
+            {
+                day: 7, date: "01/24", fullDate: "2026/01/24 (六)", location: "行程未定", hotel: "待確認",
+                activities: [
+                    { time: "彈性", title: "自由探索", icon: "Navigation" }
+                ]
+            },
+            {
+                day: 12, date: "01/29", fullDate: "2026/01/29 (四)", location: "返程", hotel: "N/A",
+                activities: [
+                    { time: "上午", title: "返回新千歲機場", icon: "Car" },
+                    { time: "15:00", title: "還車 (World Net)", icon: "Car", mapCode: "113 774 573*00", note: "記得加滿油" },
+                    { time: "17:30", title: "TR 893 起飛", icon: "Plane" }
+                ]
+            }
+        ];
+
+        // --- UI 元件 ---
+
+        const Header = ({ title }) => (
+            <div className="fixed top-0 left-0 right-0 z-40 glass flex items-end pb-4 px-6 pt-safe h-[92px]">
+                <h1 className="text-lg font-medium tracking-widest text-morandi-textMain text-center uppercase w-full opacity-80">{title}</h1>
+            </div>
+        );
+
+        const SectionTitle = ({ children, colorClass }) => (
+            <div className="flex items-center gap-3 mb-5 mt-10 px-1">
+                <div className={`w-1 h-5 rounded-full ${colorClass}`}></div>
+                <h2 className="text-lg font-bold tracking-wide text-morandi-textMain opacity-90">{children}</h2>
+            </div>
+        );
+
+        const CopyButton = ({ text }) => {
+            const [copied, setCopied] = useState(false);
+            
+            const handleCopy = (e) => {
+                e.stopPropagation();
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try { document.execCommand('copy'); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch (err) {}
+                document.body.removeChild(textArea);
+            };
+
+            return (
+                <button 
+                    onClick={handleCopy}
+                    className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-full transition-all duration-300 shadow-sm
+                    ${copied ? 'bg-morandi-green text-white' : 'bg-morandi-accentLight text-morandi-textMain hover:bg-morandi-highlightLight'}`}
+                >
+                    {copied ? "COPIED" : <><Icons.Copy size={11} /> {text}</>}
+                </button>
+            );
+        };
+
+        const GoogleMapLink = ({ query, children, className, onClick }) => (
+            <a 
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`} 
+                target="_blank" rel="noopener noreferrer"
+                className={`inline-flex items-center gap-1 hover:opacity-70 transition-opacity active:scale-95 ${className}`}
+                onClick={(e) => { e.stopPropagation(); if(onClick) onClick(); }}
+            >
+                {children}
+            </a>
+        );
+
+        const HotelParkingSection = ({ parkingData, hotelName }) => {
+            const [isExpanded, setIsExpanded] = useState(false);
+            if (!parkingData || parkingData.length === 0) return null;
+
+            return (
+                <div className="mt-3 border-t border-dashed border-morandi-accentLight pt-3">
+                    <button onClick={() => setIsExpanded(!isExpanded)} className="flex items-center gap-2 text-xs text-morandi-accent hover:text-morandi-textMain transition-colors w-full group">
+                        <div className="bg-morandi-accentLight p-1.5 rounded text-morandi-accent group-hover:bg-morandi-highlightLight transition-colors"><Icons.Parking size={12} /></div>
+                        <span className="font-medium tracking-wide">附近停車場資訊 ({parkingData.length})</span>
+                        <div className={`transform transition-transform duration-300 ml-auto ${isExpanded ? 'rotate-180' : ''}`}><Icons.ChevronDown size={12} /></div>
+                    </button>
+                    
+                    <div className={`overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${isExpanded ? 'max-h-[500px] opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
+                        <div className="bg-morandi-highlightLight/50 rounded-xl p-1 space-y-2">
+                            {parkingData.map((lot, idx) => (
+                                <div key={idx} className="bg-white p-3 rounded-lg border border-white/50 shadow-sm">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <h4 className="text-sm font-bold text-morandi-textMain">{lot.name}</h4>
+                                        <span className="text-[10px] bg-morandi-accentLight px-2 py-0.5 rounded-full text-morandi-textSub font-bold">{lot.price}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between mt-2">
+                                        <div className="flex gap-2 items-center">
+                                            {lot.mapCode && <CopyButton text={lot.mapCode} />}
+                                            <GoogleMapLink query={`${lot.name} near ${hotelName}`} className="text-[10px] text-morandi-accent border border-morandi-accentLight px-2 py-1 rounded-full flex items-center gap-1">
+                                                <Icons.Map size={10} /> 路線
+                                            </GoogleMapLink>
+                                        </div>
+                                    </div>
+                                    {lot.note && <p className="text-[10px] text-morandi-textSub mt-2 pl-2 border-l-2 border-morandi-highlight leading-tight">{lot.note}</p>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 主要頁面 ---
+
+        const TransportPage = () => (
+            <div className="pb-40 px-5 animate-card">
+                <SectionTitle colorClass="bg-morandi-accent">航班資訊 Flights</SectionTitle>
+                <div className="space-y-5">
+                    {FLIGHT_DATA.map((flight, idx) => (
+                        <div key={idx} className="bg-white p-6 rounded-2xl shadow-soft border border-white relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Icons.Plane size={80} /></div>
+                            <div className="flex justify-between items-center mb-4">
+                                <span className="text-[10px] font-bold tracking-widest text-white px-3 py-1 rounded-full bg-morandi-accent shadow-sm">{flight.type}</span>
+                                <span className="text-xs text-morandi-textSub font-medium font-mono">{flight.date}</span>
+                            </div>
+                            <div className="relative z-10">
+                                <h3 className="text-xl font-bold text-morandi-textMain mb-1">{flight.flight}</h3>
+                                <p className="text-sm text-morandi-textSub mb-4">{flight.route}</p>
+                                <div className="flex items-center gap-3 text-sm font-medium text-morandi-textMain bg-morandi-accentLight/50 p-3 rounded-xl">
+                                    <Icons.Clock size={16} className="text-morandi-accent" />
+                                    {flight.time}
+                                </div>
+                                <p className="mt-3 text-xs text-morandi-accent flex items-center gap-1 opacity-80"><Icons.Info size={12} /> {flight.note}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                <SectionTitle colorClass="bg-morandi-highlight">租車詳情 Car Rental</SectionTitle>
+                <div className="bg-white p-6 rounded-2xl shadow-soft border border-white relative overflow-hidden">
+                    <div className="absolute -right-6 -top-6 w-32 h-32 bg-morandi-highlight/10 rounded-full blur-xl"></div>
+                    <div className="relative z-10">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h3 className="font-bold text-xl text-morandi-textMain">{CAR_RENTAL_DATA.model}</h3>
+                                <p className="text-[10px] text-morandi-highlight font-bold mt-1 uppercase tracking-widest">ID: {CAR_RENTAL_DATA.orderId}</p>
+                            </div>
+                            <div className="p-3 rounded-2xl bg-morandi-highlight/10 text-morandi-highlight"><Icons.Car size={24} /></div>
+                        </div>
+                        
+                        <div className="space-y-4 text-sm">
+                            {[
+                                {l:"租車公司", v:CAR_RENTAL_DATA.company},
+                                {l:"取車地點", v:CAR_RENTAL_DATA.pickup},
+                                {l:"租用期間", v:CAR_RENTAL_DATA.period},
+                                {l:"總金額", v:CAR_RENTAL_DATA.price, highlight:true}
+                            ].map((row, i) => (
+                                <div key={i} className="flex justify-between items-baseline border-b border-dashed border-morandi-accentLight pb-2 last:border-0">
+                                    <span className="text-xs text-morandi-textSub">{row.l}</span>
+                                    <span className={`text-right ${row.highlight ? 'font-bold text-base text-morandi-textMain' : 'text-morandi-textMain font-medium'}`}>{row.v}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-5 bg-morandi-highlightLight/50 p-4 rounded-xl">
+                            <p className="text-xs text-morandi-highlight font-bold mb-2">注意事項 Note</p>
+                            <ul className="text-[11px] text-morandi-textSub space-y-1 list-disc list-inside opacity-80">
+                                <li>保險：{CAR_RENTAL_DATA.insurance}</li>
+                                {CAR_RENTAL_DATA.notes.map((note, i) => <li key={i}>{note}</li>)}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const DateOverview = ({ currentDay, setDay }) => (
+            <div className="w-full overflow-x-auto pb-4 mb-2 no-scrollbar px-4 sticky z-30 bg-[#F7F5F2]/95 backdrop-blur-sm pt-4 transition-all duration-200" style={{ top: "92px" }}>
+                <div className="flex gap-3 min-w-max">
+                    {ITINERARY_DATA.map((item) => {
+                        const isActive = currentDay === item.day;
+                        return (
+                            <button
+                                key={item.day}
+                                onClick={() => setDay(item.day)}
+                                className={`flex flex-col items-center justify-center w-[68px] h-[84px] rounded-2xl transition-all duration-300 snap-center border
+                                    ${isActive 
+                                    ? `bg-white border-morandi-highlight shadow-float scale-105 translate-y-[-2px]` 
+                                    : 'bg-white/40 border-transparent hover:bg-white hover:shadow-sm'
+                                    }`}
+                            >
+                                <span className={`text-[9px] font-bold tracking-widest mb-1 uppercase ${isActive ? 'text-morandi-highlight' : 'text-morandi-textSub/50'}`}>Day</span>
+                                <span className={`text-2xl font-bold leading-none mb-1 ${isActive ? 'text-morandi-textMain' : 'text-morandi-accent/50'}`}>{item.day}</span>
+                                <span className={`text-[10px] font-medium ${isActive ? 'text-morandi-textSub' : 'text-morandi-textSub/40'}`}>{item.date}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+
+        const ItineraryPage = () => {
+            const [openDay, setOpenDay] = useState(1);
+            const handleSetDay = (day) => { setOpenDay(day); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+            return (
+                <div className="pb-40 animate-card relative">
+                    <DateOverview currentDay={openDay} setDay={handleSetDay} />
+                    <div className="px-5 mt-2">
+                        {ITINERARY_DATA.map((item) => {
+                            if (openDay !== item.day) return null;
+                            return (
+                                <div key={item.day} className="bg-white rounded-3xl shadow-soft border border-white overflow-hidden animate-card">
+                                    <div className="p-6 border-b border-morandi-accentLight/50 bg-gradient-to-r from-white to-morandi-accentLight/10">
+                                        <div className="flex justify-between items-end">
+                                            <div>
+                                                <p className="text-xs font-bold tracking-widest text-morandi-highlight uppercase mb-1">Location</p>
+                                                <div className="flex items-center gap-2 text-xl font-bold text-morandi-textMain">
+                                                    <Icons.MapPin className="text-morandi-highlight" size={20}/> {item.location}
+                                                </div>
+                                            </div>
+                                            <span className="text-xs font-mono text-morandi-textSub bg-morandi-accentLight px-2 py-1 rounded-lg">{item.fullDate}</span>
+                                        </div>
+                                    </div>
+                                    <div className="p-6">
+                                        <div className="relative pl-4 space-y-8 before:content-[''] before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[2px] before:bg-morandi-accentLight">
+                                            {item.hotel && item.hotel !== "N/A" && (
+                                                <div className="relative pl-6">
+                                                    <div className="absolute -left-[5px] top-0 w-4 h-4 rounded-full border-4 border-white bg-morandi-highlight shadow-sm z-10"></div>
+                                                    <div className="bg-morandi-highlightLight/30 p-5 rounded-2xl border border-morandi-highlight/20">
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <span className="text-[10px] font-bold tracking-widest text-morandi-highlight uppercase">Accommodation</span>
+                                                                <h4 className="text-base font-bold text-morandi-textMain mt-1">{item.hotel}</h4>
+                                                            </div>
+                                                            <GoogleMapLink query={item.hotel} className="bg-white p-2 rounded-full text-morandi-highlight shadow-sm hover:scale-110 transition-transform">
+                                                                <Icons.Navigation size={16} />
+                                                            </GoogleMapLink>
+                                                        </div>
+                                                        <HotelParkingSection parkingData={item.parking} hotelName={item.hotel} />
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {item.activities.map((act, idx) => (
+                                                <div key={idx} className="relative pl-6 group">
+                                                    <div className={`absolute -left-[5px] top-1.5 w-4 h-4 rounded-full border-4 border-white shadow-sm z-10 transition-colors duration-300
+                                                        ${act.icon === 'Utensils' ? 'bg-morandi-rose' : 'bg-morandi-accent'}`}></div>
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-xs font-mono font-bold text-morandi-textSub bg-morandi-accentLight/50 px-2 py-1 rounded-md">{act.time}</span>
+                                                            <span className="text-base font-bold text-morandi-textMain group-hover:text-morandi-accent transition-colors">{act.title}</span>
+                                                        </div>
+                                                        {(act.mapCode || act.icon !== 'Plane') && (
+                                                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                                {act.mapCode && <CopyButton text={act.mapCode} />}
+                                                                {act.icon !== 'Plane' && (
+                                                                    <GoogleMapLink query={act.title} className="text-[10px] text-morandi-accent border border-morandi-accentLight px-3 py-1.5 rounded-full flex items-center gap-1 hover:bg-white hover:shadow-sm">
+                                                                        <Icons.Map size={11} /> Google Map
+                                                                    </GoogleMapLink>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        {act.note && <p className="text-xs text-morandi-textSub mt-1 pl-3 border-l-2 border-morandi-accentLight">{act.note}</p>}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        const RestaurantPage = () => {
+            const [expandedId, setExpandedId] = useState(null);
+            const grouped = RESTAURANT_DATA.reduce((acc, curr, index) => {
+                const itemWithId = { ...curr, id: index };
+                (acc[curr.area] = acc[curr.area] || []).push(itemWithId);
+                return acc;
+            }, {});
+            const toggleExpand = (id) => setExpandedId(expandedId === id ? null : id);
+
+            return (
+                <div className="pb-40 px-5 animate-card">
+                    <SectionTitle colorClass="bg-morandi-rose">美食清單 Gourmet</SectionTitle>
+                    {Object.keys(grouped).map((area) => (
+                        <div key={area} className="mb-8">
+                            <div className="flex items-center gap-2 mb-4 ml-1 opacity-60">
+                                <Icons.MapPin size={14} />
+                                <h3 className="text-xs font-bold tracking-[0.2em] uppercase">{area}</h3>
+                            </div>
+                            <div className="grid gap-3">
+                                {grouped[area].map((rest) => {
+                                    const isExpanded = expandedId === rest.id;
+                                    return (
+                                        <div key={rest.id} onClick={() => toggleExpand(rest.id)} 
+                                            className={`bg-white rounded-xl border overflow-hidden transition-all duration-300 cursor-pointer
+                                            ${isExpanded ? 'shadow-float border-morandi-rose scale-[1.02] z-10' : 'shadow-sm border-transparent hover:shadow-md hover:scale-[1.01]'}`}>
+                                            <div className="p-4 flex justify-between items-start">
+                                                <div className="flex-1 pr-4">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="text-[10px] px-2 py-0.5 rounded text-white font-bold bg-morandi-rose shadow-sm">{rest.type}</span>
+                                                        {rest.note && <span className="text-[10px] text-morandi-textSub bg-morandi-roseLight px-2 py-0.5 rounded truncate max-w-[120px]">{rest.note}</span>}
+                                                    </div>
+                                                    <h4 className="text-base font-bold text-morandi-textMain leading-tight">{rest.name}</h4>
+                                                </div>
+                                                <div className={`transform transition-transform duration-300 text-morandi-textSub mt-1 ${isExpanded ? 'rotate-180' : ''}`}>
+                                                    <Icons.ChevronDown size={18} />
+                                                </div>
+                                            </div>
+                                            <div className={`bg-morandi-roseLight/30 border-t border-morandi-roseLight/50 overflow-hidden transition-all duration-300 ease-out ${isExpanded ? 'max-h-[200px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                                <div className="p-4 space-y-3">
+                                                    <div className="flex items-center justify-between bg-white p-3 rounded-lg shadow-sm">
+                                                        <span className="text-[10px] font-bold text-morandi-textSub uppercase tracking-wider">Mapcode</span>
+                                                        <div className="flex items-center gap-3">
+                                                            {rest.mapCode ? <CopyButton text={rest.mapCode} /> : <span className="text-xs text-stone-300 italic">待查詢</span>}
+                                                        </div>
+                                                    </div>
+                                                    <GoogleMapLink query={`${rest.area} ${rest.name}`} className="flex items-center justify-center gap-2 w-full py-3 bg-white rounded-lg text-xs font-bold text-morandi-rose shadow-sm hover:bg-morandi-rose hover:text-white transition-all">
+                                                        <Icons.Map size={14} /> 開啟 Google Maps 導航
+                                                    </GoogleMapLink>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        const NavButton = ({ isActive, onClick, icon: IconName, label, activeColor }) => {
+            const Icon = Icons[IconName] || Icons.MapPin;
+            return (
+                <button onClick={onClick} className="flex flex-col items-center justify-center w-full h-full group relative">
+                    <div className={`absolute -top-3 w-8 h-1 rounded-b-full transition-all duration-300 ${isActive ? activeColor.replace('text-', 'bg-') : 'bg-transparent'}`}></div>
+                    <div className={`transition-all duration-300 transform ${isActive ? `scale-110 ${activeColor} drop-shadow-sm` : 'text-morandi-textSub/40 hover:text-morandi-textSub/60'}`}>
+                        <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+                    </div>
+                    <span className={`text-[9px] font-bold tracking-widest mt-1 transition-all duration-300 ${isActive ? `opacity-100 ${activeColor}` : 'opacity-0 translate-y-2'}`}>{label}</span>
+                </button>
+            );
+        };
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('itinerary');
+            return (
+                <div className="min-h-[100dvh] bg-morandi-bg font-sans selection:bg-morandi-highlight selection:text-white pb-safe antialiased">
+                    <Header title="Hokkaido Trip" />
+                    <main className="max-w-md mx-auto w-full pt-[92px]">
+                        {activeTab === 'itinerary' && <ItineraryPage />}
+                        {activeTab === 'transport' && <TransportPage />}
+                        {activeTab === 'food' && <RestaurantPage />}
+                    </main>
+                    <nav className="fixed bottom-0 w-full glass border-t border-white/50 pb-safe pt-2 z-50">
+                        <div className="max-w-md mx-auto flex justify-around items-center h-16 px-6">
+                            <NavButton isActive={activeTab === 'itinerary'} onClick={() => setActiveTab('itinerary')} icon="Calendar" label="SCHEDULE" activeColor="text-morandi-accent" />
+                            <NavButton isActive={activeTab === 'transport'} onClick={() => setActiveTab('transport')} icon="Plane" label="TRANSPORT" activeColor="text-morandi-green" />
+                            <NavButton isActive={activeTab === 'food'} onClick={() => setActiveTab('food')} icon="Utensils" label="DINING" activeColor="text-morandi-rose" />
+                        </div>
+                    </nav>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
